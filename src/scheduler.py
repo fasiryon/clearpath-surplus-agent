@@ -1,49 +1,18 @@
 """
-Daily orchestration script for ClearPath Surplus agent.
+v2 Scheduler — thin task seeder only.
 
-Runs three sequential stages:
-  Stage 1: Scrape MJCS for new CAEF surplus cases
-  Stage 2: Skip-trace owners for cases above minimum surplus threshold
-  Stage 3: Trigger Zapier outreach webhooks for pending contacts
+Seeds one 'scrape' task per active county, then exits.
+The agents (scrape_agent, docket_agent, skip_trace_agent, outreach_agent)
+run as separate jobs in GitHub Actions and drain their own queues.
 
-Designed for 6:00 AM ET daily execution via GitHub Actions.
-
-GitHub Actions workflow YAML (for reference — actual file at .github/workflows/daily.yml):
----
-name: ClearPath Daily Agent
-
-on:
-  schedule:
-    - cron: '0 10 * * *'   # 10:00 UTC = 6:00 AM ET
-  workflow_dispatch:        # Manual trigger from GitHub Actions UI
-
-jobs:
-  run-agent:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
-      - name: Install dependencies
-        run: |
-          pip install -r requirements.txt
-          playwright install chromium --with-deps
-      - name: Run scheduler
-        run: python src/scheduler.py
-        env:
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
-          BATCH_SKIP_TRACE_API_KEY: ${{ secrets.BATCH_SKIP_TRACE_API_KEY }}
-          ZAPIER_OUTREACH_WEBHOOK: ${{ secrets.ZAPIER_OUTREACH_WEBHOOK }}
-          HUBSPOT_API_KEY: ${{ secrets.HUBSPOT_API_KEY }}
-          ACTIVE_COUNTY: ${{ vars.ACTIVE_COUNTY }}
----
+v1 behavior (run all stages in one process) is preserved in
+src/scheduler_v1_compat.py for reference and local testing.
 """
 
 from __future__ import annotations
 
 import asyncio
+import json
 import os
 import sys
 from datetime import datetime, timezone
@@ -53,85 +22,62 @@ from loguru import logger
 
 load_dotenv()
 
-# Configure loguru output
-LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
-LOG_FILE = os.getenv("LOG_FILE", "logs/clearpath.log")
-
 os.makedirs("logs", exist_ok=True)
+LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
 logger.remove()
 logger.add(sys.stderr, level=LOG_LEVEL, format="{time:YYYY-MM-DD HH:mm:ss} | {level} | {message}")
-logger.add(LOG_FILE, level="DEBUG", rotation="7 days", retention="30 days")
+logger.add("logs/scheduler.log", level="DEBUG", rotation="7 days", retention="30 days")
 
 
-async def run_pipeline() -> dict[str, int]:
+def _load_active_counties() -> list[dict]:
+    """Read states.json and return all active county dicts with their state code injected."""
+    config_path = os.path.join(os.path.dirname(__file__), "..", "config", "states.json")
+    active: list[dict] = []
+    try:
+        with open(config_path) as f:
+            data = json.load(f)
+        for state_block in data["states"]:
+            if not state_block.get("active", False):
+                continue
+            state_code = state_block["state"]
+            for county in state_block.get("counties", []):
+                if county.get("active", False):
+                    active.append({**county, "state": state_code})
+    except Exception as e:
+        logger.error(f"Failed to load states.json: {e}")
+    return active
+
+
+async def seed_pipeline() -> int:
     """
-    Execute the full three-stage daily pipeline.
+    Seed scrape tasks for all active counties and report how many were inserted.
 
     Returns:
-        Dict with counts: { "cases_found", "contacts_traced", "outreach_triggered" }
+        Number of scrape tasks inserted into agent_tasks.
     """
-    # Lazy imports to ensure logging is configured first
-    from outreach import run_outreach
-    from scraper import run_scraper
-    from skip_trace import run_skip_tracer
+    from src import queue as q
 
     start = datetime.now(timezone.utc)
     logger.info("=" * 60)
-    logger.info(f"ClearPath Surplus Agent — Daily Run @ {start.isoformat()}")
+    logger.info(f"ClearPath Scheduler v2 — {start.isoformat()}")
     logger.info("=" * 60)
 
-    county = os.getenv("ACTIVE_COUNTY", "Baltimore County")
-    lookback = int(os.getenv("SCRAPE_LOOKBACK_DAYS", "3"))
+    active_counties = _load_active_counties()
+    if not active_counties:
+        logger.error("No active counties found in states.json — nothing to seed")
+        return 0
 
-    results = {
-        "cases_found": 0,
-        "contacts_traced": 0,
-        "outreach_triggered": 0,
-    }
+    logger.info(
+        f"Seeding scrape tasks for: "
+        + ", ".join(f"{c['state']}/{c['name']}" for c in active_counties)
+    )
 
-    # -------------------------------------------------------
-    # STAGE 1: Scrape
-    # -------------------------------------------------------
-    logger.info(f"[Stage 1] Scraping {county} (lookback={lookback} days)...")
-    try:
-        surplus_cases = await run_scraper(county, lookback)
-        results["cases_found"] = len(surplus_cases)
-        logger.info(f"[Stage 1] Complete — {results['cases_found']} surplus cases found")
-    except Exception as e:
-        logger.error(f"[Stage 1] FAILED: {e}")
-
-    # -------------------------------------------------------
-    # STAGE 2: Skip trace
-    # -------------------------------------------------------
-    logger.info("[Stage 2] Running skip tracer...")
-    try:
-        results["contacts_traced"] = await run_skip_tracer()
-        logger.info(f"[Stage 2] Complete — {results['contacts_traced']} contacts traced")
-    except Exception as e:
-        logger.error(f"[Stage 2] FAILED: {e}")
-
-    # -------------------------------------------------------
-    # STAGE 3: Outreach
-    # -------------------------------------------------------
-    logger.info("[Stage 3] Triggering outreach...")
-    try:
-        results["outreach_triggered"] = await run_outreach()
-        logger.info(f"[Stage 3] Complete — {results['outreach_triggered']} outreaches triggered")
-    except Exception as e:
-        logger.error(f"[Stage 3] FAILED: {e}")
+    seeded = await q.seed_scrape_tasks(active_counties)
 
     elapsed = (datetime.now(timezone.utc) - start).total_seconds()
-    logger.info("=" * 60)
-    logger.info(f"Pipeline complete in {elapsed:.1f}s")
-    logger.info(
-        f"Summary: cases={results['cases_found']} | "
-        f"traced={results['contacts_traced']} | "
-        f"outreach={results['outreach_triggered']}"
-    )
-    logger.info("=" * 60)
-
-    return results
+    logger.info(f"Scheduler done in {elapsed:.1f}s — {seeded} tasks seeded")
+    return seeded
 
 
 if __name__ == "__main__":
-    asyncio.run(run_pipeline())
+    asyncio.run(seed_pipeline())

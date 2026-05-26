@@ -1,69 +1,156 @@
-name: ClearPath Daily Surplus Agent
+name: ClearPath Daily Surplus Agent v2
 
 on:
   schedule:
-    # 10:00 UTC = 6:00 AM US Eastern Time (adjust for DST manually or use -4/-5)
+    # 10:00 UTC = 6:00 AM US Eastern Time
     - cron: '0 10 * * *'
 
-  # Manual trigger from GitHub Actions UI — useful for testing
   workflow_dispatch:
     inputs:
-      county:
-        description: 'County to scrape (overrides ACTIVE_COUNTY var)'
-        required: false
-        default: 'Baltimore County'
       lookback_days:
         description: 'Days to look back (default: 3)'
         required: false
         default: '3'
 
+# Shared env injected into every job via env: at job level
+env:
+  PYTHONPATH: .
+  SUPABASE_URL:            ${{ secrets.SUPABASE_URL }}
+  SUPABASE_SERVICE_KEY:    ${{ secrets.SUPABASE_SERVICE_KEY }}
+  BATCH_SKIP_TRACE_API_KEY: ${{ secrets.BATCH_SKIP_TRACE_API_KEY }}
+  BEEN_VERIFIED_API_KEY:   ${{ secrets.BEEN_VERIFIED_API_KEY }}
+  ZAPIER_OUTREACH_WEBHOOK: ${{ secrets.ZAPIER_OUTREACH_WEBHOOK }}
+  HUBSPOT_API_KEY:         ${{ secrets.HUBSPOT_API_KEY }}
+  HUBSPOT_PIPELINE_ID:     ${{ secrets.HUBSPOT_PIPELINE_ID }}
+  HUBSPOT_STAGE_NEW_LEAD:  ${{ secrets.HUBSPOT_STAGE_NEW_LEAD }}
+  ANTHROPIC_API_KEY:       ${{ secrets.ANTHROPIC_API_KEY }}
+  SENTRY_DSN:              ${{ secrets.SENTRY_DSN }}
+  SCRAPE_LOOKBACK_DAYS:    ${{ inputs.lookback_days || vars.SCRAPE_LOOKBACK_DAYS || '3' }}
+  MIN_SURPLUS_AMOUNT:      ${{ vars.MIN_SURPLUS_AMOUNT || '5000' }}
+  DEFAULT_FEE_PERCENTAGE:  ${{ vars.DEFAULT_FEE_PERCENTAGE || '40.0' }}
+  LOG_LEVEL: INFO
+
 jobs:
-  run-agent:
-    name: Run ClearPath Pipeline
+  # ---------------------------------------------------------------
+  # Job 1: Seed — inserts scrape tasks for all active counties
+  # ---------------------------------------------------------------
+  seed:
+    name: Seed task queue
     runs-on: ubuntu-latest
-    timeout-minutes: 30
-
+    timeout-minutes: 5
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Set up Python 3.12
-        uses: actions/setup-python@v5
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
           cache: 'pip'
-
-      - name: Install Python dependencies
+      - name: Install dependencies
         run: pip install -r requirements.txt
-
-      - name: Install Playwright Chromium
-        run: playwright install chromium --with-deps
-
-      - name: Run scheduler
+      - name: Seed scrape tasks
         run: python src/scheduler.py
-        env:
-          # Supabase
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
-          # Skip tracing
-          BATCH_SKIP_TRACE_API_KEY: ${{ secrets.BATCH_SKIP_TRACE_API_KEY }}
-          BEEN_VERIFIED_API_KEY: ${{ secrets.BEEN_VERIFIED_API_KEY }}
-          # Outreach
-          ZAPIER_OUTREACH_WEBHOOK: ${{ secrets.ZAPIER_OUTREACH_WEBHOOK }}
-          HUBSPOT_API_KEY: ${{ secrets.HUBSPOT_API_KEY }}
-          HUBSPOT_PIPELINE_ID: ${{ secrets.HUBSPOT_PIPELINE_ID }}
-          HUBSPOT_STAGE_NEW_LEAD: ${{ secrets.HUBSPOT_STAGE_NEW_LEAD }}
-          # Behavior
-          ACTIVE_COUNTY: ${{ inputs.county || vars.ACTIVE_COUNTY || 'Baltimore County' }}
-          SCRAPE_LOOKBACK_DAYS: ${{ inputs.lookback_days || vars.SCRAPE_LOOKBACK_DAYS || '3' }}
-          MIN_SURPLUS_AMOUNT: ${{ vars.MIN_SURPLUS_AMOUNT || '5000' }}
-          DEFAULT_FEE_PERCENTAGE: ${{ vars.DEFAULT_FEE_PERCENTAGE || '40.0' }}
-          LOG_LEVEL: INFO
 
+  # ---------------------------------------------------------------
+  # Job 2: Scrape — one runner per scrape task (drains queue)
+  # ---------------------------------------------------------------
+  scrape:
+    name: Scrape court cases
+    needs: seed
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+          playwright install chromium --with-deps
+      - name: Run scrape agent
+        run: python -m src.agents.scrape_agent
       - name: Upload logs on failure
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: agent-logs-${{ github.run_id }}
+          name: scrape-logs-${{ github.run_id }}
+          path: logs/
+          retention-days: 7
+
+  # ---------------------------------------------------------------
+  # Job 3: Docket analysis — LLM surplus detection (drains queue)
+  # ---------------------------------------------------------------
+  docket:
+    name: Analyze dockets (Claude Haiku)
+    needs: scrape
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+      - name: Run docket agent
+        run: python -m src.agents.docket_agent
+      - name: Upload logs on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: docket-logs-${{ github.run_id }}
+          path: logs/
+          retention-days: 7
+
+  # ---------------------------------------------------------------
+  # Job 4: Skip trace — find owner contact info (drains queue)
+  # ---------------------------------------------------------------
+  skip_trace:
+    name: Skip trace owners
+    needs: docket
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+      - name: Run skip trace agent
+        run: python -m src.agents.skip_trace_agent
+      - name: Upload logs on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: skip-trace-logs-${{ github.run_id }}
+          path: logs/
+          retention-days: 7
+
+  # ---------------------------------------------------------------
+  # Job 5: Outreach — fire Zapier webhooks (drains queue)
+  # ---------------------------------------------------------------
+  outreach:
+    name: Trigger outreach
+    needs: skip_trace
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+      - name: Run outreach agent
+        run: python -m src.agents.outreach_agent
+      - name: Upload logs on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: outreach-logs-${{ github.run_id }}
           path: logs/
           retention-days: 7

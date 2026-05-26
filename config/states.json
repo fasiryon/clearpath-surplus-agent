@@ -1,0 +1,201 @@
+{
+  "states": [
+    {
+      "state": "MD",
+      "name": "Maryland",
+      "active": true,
+      "court_system": "MJCS",
+      "case_type": "CAEF",
+      "note": "All MD counties share the MJCS system — one adapter handles all",
+      "counties": [
+        {
+          "name": "Baltimore County",
+          "code": "03",
+          "active": true,
+          "note": "PRIMARY LAUNCH COUNTY — VERIFY: code '03' against live MJCS site field"
+        },
+        {
+          "name": "Baltimore City",
+          "code": "24",
+          "active": true,
+          "note": "Independent city, not a county — high raw volume, lower avg surplus; VERIFY code"
+        },
+        {
+          "name": "Prince Georges",
+          "code": "16",
+          "active": false,
+          "note": "Phase 2 — second highest volume in MD; VERIFY code against live MJCS"
+        },
+        {
+          "name": "Montgomery",
+          "code": "15",
+          "active": false,
+          "note": "Highest home values in MD = largest average surplus; Phase 2"
+        },
+        {
+          "name": "Anne Arundel",
+          "code": "02",
+          "active": false,
+          "note": "Annapolis area, good volume; Phase 2"
+        },
+        {
+          "name": "Howard",
+          "code": "13",
+          "active": false,
+          "note": "Columbia area, high home values; Phase 3"
+        },
+        {
+          "name": "Frederick",
+          "code": "10",
+          "active": false,
+          "note": "Phase 3"
+        },
+        {
+          "name": "Charles",
+          "code": "08",
+          "active": false,
+          "note": "Southern MD, growing suburbs; Phase 3"
+        },
+        {
+          "name": "Harford",
+          "code": "12",
+          "active": false,
+          "note": "Phase 3"
+        },
+        {
+          "name": "Carroll",
+          "code": "06",
+          "active": false,
+          "note": "Phase 4"
+        },
+        {
+          "name": "Calvert",
+          "code": "04",
+          "active": false,
+          "note": "Phase 4"
+        },
+        {
+          "name": "Cecil",
+          "code": "07",
+          "active": false,
+          "note": "Phase 4"
+        },
+        {
+          "name": "Washington",
+          "code": "21",
+          "active": false,
+          "note": "Hagerstown area; Phase 4"
+        },
+        {
+          "name": "St. Mary's",
+          "code": "18",
+          "active": false,
+          "note": "Phase 4"
+        },
+        {
+          "name": "Wicomico",
+          "code": "22",
+          "active": false,
+          "note": "Eastern Shore, Salisbury; Phase 4"
+        },
+        {
+          "name": "Queen Anne's",
+          "code": "17",
+          "active": false,
+          "note": "Eastern Shore; Phase 5"
+        },
+        {
+          "name": "Worcester",
+          "code": "23",
+          "active": false,
+          "note": "Ocean City area; Phase 5"
+        },
+        {
+          "name": "Allegany",
+          "code": "01",
+          "active": false,
+          "note": "Western MD, low volume; Phase 5"
+        },
+        {
+          "name": "Somerset",
+          "code": "19",
+          "active": false,
+          "note": "Eastern Shore; Phase 5"
+        },
+        {
+          "name": "Talbot",
+          "code": "20",
+          "active": false,
+          "note": "Eastern Shore; Phase 5"
+        },
+        {
+          "name": "Kent",
+          "code": "14",
+          "active": false,
+          "note": "Eastern Shore, low volume; Phase 5"
+        },
+        {
+          "name": "Garrett",
+          "code": "11",
+          "active": false,
+          "note": "Far western MD; Phase 5"
+        },
+        {
+          "name": "Dorchester",
+          "code": "09",
+          "active": false,
+          "note": "Eastern Shore; Phase 5"
+        },
+        {
+          "name": "Caroline",
+          "code": "05",
+          "active": false,
+          "note": "Eastern Shore; Phase 5"
+        }
+      ]
+    },
+    {
+      "state": "FL",
+      "name": "Florida",
+      "active": false,
+      "note": "Activate after Maryland pipeline is stable. No fee cap. Highest foreclosure volume in US.",
+      "counties": [
+        {
+          "name": "Hillsborough",
+          "active": false,
+          "note": "Tampa metro — largest FL market, public records API available"
+        },
+        {
+          "name": "Sarasota",
+          "active": false,
+          "note": "Phase 1 FL county — manageable volume, good test market"
+        },
+        {
+          "name": "Miami-Dade",
+          "active": false,
+          "note": "Highest volume in FL; Phase 2"
+        },
+        {
+          "name": "Broward",
+          "active": false,
+          "note": "Fort Lauderdale; Phase 2"
+        },
+        {
+          "name": "Palm Beach",
+          "active": false,
+          "note": "High home values; Phase 2"
+        },
+        {
+          "name": "Orange",
+          "active": false,
+          "note": "Orlando; Phase 2"
+        },
+        {
+          "name": "Pinellas",
+          "active": false,
+          "note": "St. Petersburg; Phase 2"
+        }
+      ]
+    }
+  ]
+}

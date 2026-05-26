@@ -9,6 +9,60 @@ from typing import Any
 from pydantic import BaseModel, Field, field_validator
 
 
+# ---------------------------------------------------------------------------
+# v2 task queue models
+# ---------------------------------------------------------------------------
+
+class TaskType(str, Enum):
+    SCRAPE = "scrape"
+    DOCKET_ANALYSIS = "docket_analysis"
+    SKIP_TRACE = "skip_trace"
+    OUTREACH = "outreach"
+
+
+class TaskStatus(str, Enum):
+    PENDING = "pending"
+    RUNNING = "running"
+    DONE = "done"
+    FAILED = "failed"
+
+
+class AgentTask(BaseModel):
+    id: str
+    task_type: TaskType
+    status: TaskStatus
+    payload: dict[str, Any] = Field(default_factory=dict)
+    priority: int = 5
+    state: str | None = None
+    county: str | None = None
+    worker_id: str | None = None
+    task_key: str | None = None
+    claimed_at: str | None = None
+    completed_at: str | None = None
+    result_payload: dict[str, Any] | None = None
+    error_message: str | None = None
+    created_at: str | None = None
+
+
+class AgentRun(BaseModel):
+    agent_type: str
+    worker_id: str
+    task_id: str | None = None
+    cases_found: int = 0
+    tasks_seeded: int = 0
+    tokens_used: int = 0
+    error_count: int = 0
+    status: str = "running"
+
+
+class DocketAnalysisResult(BaseModel):
+    """Structured result from Claude Haiku LLM docket analysis."""
+    has_surplus: bool
+    surplus_amount: float | None = None
+    confidence: str  # "high" | "medium" | "low"
+    evidence: str
+
+
 class CaseStatus(str, Enum):
     NEW = "new"
     SKIP_TRACED = "skip_traced"
@@ -51,6 +105,7 @@ class CaseRecord(BaseModel):
     surplus_amount: float | None = None
     scrape_source: str = "mjcs"
     raw_docket: list[dict[str, Any]] = Field(default_factory=list)
+    raw_docket_text: str | None = None  # concatenated plain text sent to docket_agent LLM
 
     @field_validator("surplus_amount", mode="before")
     @classmethod
