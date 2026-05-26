@@ -1,0 +1,211 @@
+{
+  "maryland": {
+    "state_code": "MD",
+    "mjcs_base_url": "https://casesearch.courts.state.md.us/casesearch/inquirySearch.jis",
+    "case_type": "CAEF",
+    "counties": [
+      {
+        "name": "Allegany County",
+        "short": "Allegany",
+        "mjcs_code": "AL",
+        "fips": "001",
+        "active": false,
+        "notes": "Western Maryland, lower volume"
+      },
+      {
+        "name": "Anne Arundel County",
+        "short": "Anne Arundel",
+        "mjcs_code": "AA",
+        "fips": "003",
+        "active": false,
+        "notes": "Annapolis area, high volume"
+      },
+      {
+        "name": "Baltimore City",
+        "short": "Baltimore City",
+        "mjcs_code": "BC",
+        "fips": "510",
+        "active": false,
+        "notes": "Independent city, very high foreclosure volume"
+      },
+      {
+        "name": "Baltimore County",
+        "short": "Baltimore County",
+        "mjcs_code": "BA",
+        "fips": "005",
+        "active": true,
+        "notes": "PRIMARY LAUNCH COUNTY — high suburban foreclosure volume, Circuit Court for Baltimore County"
+      },
+      {
+        "name": "Calvert County",
+        "short": "Calvert",
+        "mjcs_code": "CA",
+        "fips": "009",
+        "active": false,
+        "notes": "Southern Maryland"
+      },
+      {
+        "name": "Caroline County",
+        "short": "Caroline",
+        "mjcs_code": "CR",
+        "fips": "011",
+        "active": false,
+        "notes": "Eastern Shore, low volume"
+      },
+      {
+        "name": "Carroll County",
+        "short": "Carroll",
+        "mjcs_code": "CL",
+        "fips": "013",
+        "active": false,
+        "notes": "North-central Maryland"
+      },
+      {
+        "name": "Cecil County",
+        "short": "Cecil",
+        "mjcs_code": "CE",
+        "fips": "015",
+        "active": false,
+        "notes": "Northeast Maryland"
+      },
+      {
+        "name": "Charles County",
+        "short": "Charles",
+        "mjcs_code": "CH",
+        "fips": "017",
+        "active": false,
+        "notes": "Southern Maryland, growing suburban area"
+      },
+      {
+        "name": "Dorchester County",
+        "short": "Dorchester",
+        "mjcs_code": "DO",
+        "fips": "019",
+        "active": false,
+        "notes": "Eastern Shore"
+      },
+      {
+        "name": "Frederick County",
+        "short": "Frederick",
+        "mjcs_code": "FR",
+        "fips": "021",
+        "active": false,
+        "notes": "Western suburbs, good volume"
+      },
+      {
+        "name": "Garrett County",
+        "short": "Garrett",
+        "mjcs_code": "GR",
+        "fips": "023",
+        "active": false,
+        "notes": "Far western, low volume"
+      },
+      {
+        "name": "Harford County",
+        "short": "Harford",
+        "mjcs_code": "HA",
+        "fips": "025",
+        "active": false,
+        "notes": "Northeast of Baltimore"
+      },
+      {
+        "name": "Howard County",
+        "short": "Howard",
+        "mjcs_code": "HO",
+        "fips": "027",
+        "active": false,
+        "notes": "Columbia area, higher home values = larger surpluses"
+      },
+      {
+        "name": "Kent County",
+        "short": "Kent",
+        "mjcs_code": "KE",
+        "fips": "029",
+        "active": false,
+        "notes": "Eastern Shore, low volume"
+      },
+      {
+        "name": "Montgomery County",
+        "short": "Montgomery",
+        "mjcs_code": "MO",
+        "fips": "031",
+        "active": false,
+        "notes": "Highest home values in MD = massive surplus potential"
+      },
+      {
+        "name": "Prince George's County",
+        "short": "Prince George's",
+        "mjcs_code": "PG",
+        "fips": "033",
+        "active": false,
+        "notes": "Second highest volume, Phase 2 target"
+      },
+      {
+        "name": "Queen Anne's County",
+        "short": "Queen Anne's",
+        "mjcs_code": "QA",
+        "fips": "035",
+        "active": false,
+        "notes": "Eastern Shore"
+      },
+      {
+        "name": "St. Mary's County",
+        "short": "St. Mary's",
+        "mjcs_code": "SM",
+        "fips": "037",
+        "active": false,
+        "notes": "Southern Maryland"
+      },
+      {
+        "name": "Somerset County",
+        "short": "Somerset",
+        "mjcs_code": "SO",
+        "fips": "039",
+        "active": false,
+        "notes": "Eastern Shore, low volume"
+      },
+      {
+        "name": "Talbot County",
+        "short": "Talbot",
+        "mjcs_code": "TA",
+        "fips": "041",
+        "active": false,
+        "notes": "Eastern Shore"
+      },
+      {
+        "name": "Washington County",
+        "short": "Washington",
+        "mjcs_code": "WA",
+        "fips": "043",
+        "active": false,
+        "notes": "Hagerstown area"
+      },
+      {
+        "name": "Wicomico County",
+        "short": "Wicomico",
+        "mjcs_code": "WI",
+        "fips": "045",
+        "active": false,
+        "notes": "Salisbury area, Eastern Shore"
+      },
+      {
+        "name": "Worcester County",
+        "short": "Worcester",
+        "mjcs_code": "WO",
+        "fips": "047",
+        "active": false,
+        "notes": "Ocean City area"
+      }
+    ],
+    "expansion_priority": [
+      "Baltimore County",
+      "Prince George's County",
+      "Anne Arundel County",
+      "Baltimore City",
+      "Montgomery County",
+      "Howard County",
+      "Frederick County",
+      "Charles County"
+    ]
+  }
+}

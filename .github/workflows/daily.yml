@@ -1,0 +1,69 @@
+name: ClearPath Daily Surplus Agent
+
+on:
+  schedule:
+    # 10:00 UTC = 6:00 AM US Eastern Time (adjust for DST manually or use -4/-5)
+    - cron: '0 10 * * *'
+
+  # Manual trigger from GitHub Actions UI — useful for testing
+  workflow_dispatch:
+    inputs:
+      county:
+        description: 'County to scrape (overrides ACTIVE_COUNTY var)'
+        required: false
+        default: 'Baltimore County'
+      lookback_days:
+        description: 'Days to look back (default: 3)'
+        required: false
+        default: '3'
+
+jobs:
+  run-agent:
+    name: Run ClearPath Pipeline
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+
+      - name: Install Python dependencies
+        run: pip install -r requirements.txt
+
+      - name: Install Playwright Chromium
+        run: playwright install chromium --with-deps
+
+      - name: Run scheduler
+        run: python src/scheduler.py
+        env:
+          # Supabase
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          # Skip tracing
+          BATCH_SKIP_TRACE_API_KEY: ${{ secrets.BATCH_SKIP_TRACE_API_KEY }}
+          BEEN_VERIFIED_API_KEY: ${{ secrets.BEEN_VERIFIED_API_KEY }}
+          # Outreach
+          ZAPIER_OUTREACH_WEBHOOK: ${{ secrets.ZAPIER_OUTREACH_WEBHOOK }}
+          HUBSPOT_API_KEY: ${{ secrets.HUBSPOT_API_KEY }}
+          HUBSPOT_PIPELINE_ID: ${{ secrets.HUBSPOT_PIPELINE_ID }}
+          HUBSPOT_STAGE_NEW_LEAD: ${{ secrets.HUBSPOT_STAGE_NEW_LEAD }}
+          # Behavior
+          ACTIVE_COUNTY: ${{ inputs.county || vars.ACTIVE_COUNTY || 'Baltimore County' }}
+          SCRAPE_LOOKBACK_DAYS: ${{ inputs.lookback_days || vars.SCRAPE_LOOKBACK_DAYS || '3' }}
+          MIN_SURPLUS_AMOUNT: ${{ vars.MIN_SURPLUS_AMOUNT || '5000' }}
+          DEFAULT_FEE_PERCENTAGE: ${{ vars.DEFAULT_FEE_PERCENTAGE || '40.0' }}
+          LOG_LEVEL: INFO
+
+      - name: Upload logs on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: agent-logs-${{ github.run_id }}
+          path: logs/
+          retention-days: 7
