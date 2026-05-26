@@ -74,37 +74,64 @@ python scheduler.py
 
 ## 4. CRITICAL: Verify MJCS Selectors Before First Production Run
 
-The MJCS site at `https://casesearch.courts.state.md.us/casesearch/inquirySearch.jis` is an older ASP.NET Web Forms application. Its form field names and HTML structure must be verified against the live site before the scraper will work.
+**Portal migration (2024-02-05):** The old ASP.NET `.jis` URL is permanently dead.
+The new portal is a React SPA at:
+```
+https://casesearch.courts.state.md.us/casesearch/inquiry-search
+```
+
+`src/adapters/maryland_mjcs.py` has been rewritten for the new portal (Playwright-only,
+no httpx). All selectors use aria roles and text content, not CSS class names.
+Run the headed browser test below to verify them on the live site before first production run.
 
 ```bash
-# Run this in a Python REPL to inspect the live MJCS form
+# Open a headed browser to visually verify the search flow
 python -c "
 import asyncio
-from playwright.sync_api import sync_playwright
+from playwright.async_api import async_playwright
 
-with sync_playwright() as p:
-    browser = p.chromium.launch(headless=False)  # headless=False to SEE the browser
-    page = browser.new_page()
-    page.goto('https://casesearch.courts.state.md.us/casesearch/inquirySearch.jis')
-    input('Press Enter after inspecting the page...')
-    browser.close()
+async def main():
+    async with async_playwright() as pw:
+        browser = await pw.chromium.launch(headless=False, slow_mo=800)
+        ctx = await browser.new_context(viewport={'width': 1280, 'height': 900})
+        page = await ctx.new_page()
+        await page.goto('https://casesearch.courts.state.md.us/casesearch/inquiry-search')
+        input('Browser open — inspect the form, then press Enter to close')
+        await browser.close()
+
+asyncio.run(main())
 "
 ```
 
-**Things to verify in `src/scraper.py`:**
+**What to verify and where to fix if broken:**
 
-| Line | What to Check | Expected value (verify live) |
-|------|--------------|------------------------------|
-| `select[name="caseType"]` | Field name of case type dropdown | May be `caseType`, `type`, or other |
-| `value="CAEF"` | Option value for foreclosure | May be `CAEF`, `CAE`, or descriptive text |
-| `select[name="countyName"]` | Field name of county selector | May be `countyName`, `county`, `location` |
-| `input[name="filingStart"]` | Start date field name | May be `filingStart`, `startDate`, `from` |
-| `input[name="filingEnd"]` | End date field name | May be `filingEnd`, `endDate`, `to` |
-| `input[type="submit"]` | Submit button selector | Verify it's unique on the page |
-| `table.resultsTable` | Results table class | Open DevTools on results page |
-| `table.docketTable` | Docket table class | Open DevTools on case detail page |
+| What | Where to update | Notes |
+|------|----------------|-------|
+| Disclaimer checkbox selector | `_accept_disclaimer()` | Look for `role=checkbox` or a specific label |
+| "I Agree" / "Continue" button text | `_accept_disclaimer()` | Exact button label text |
+| "Advanced Search" tab/link text | `_open_advanced_search()` | Exact label used on the tab |
+| "Court System" label text | `_fill_search_form()` / `_set_dropdown()` | Exact `<label>` text for the dropdown |
+| "County" label text | same | May be "Location", "Jurisdiction" |
+| "Case Type" label text | same | May be "Category", "Type" |
+| Date field labels | `_fill_date()` | May be "Filing Start", "From", etc. |
+| Results table structure | `_parse_result_rows()` | Verify column order for case number, title, date |
+| Detail page docket table | `_extract_case_detail()` | Verify column order for date and description |
 
-Update each selector in `scraper.py` after verifying against the live site.
+Add `# VERIFIED [YYYY-MM-DD]` next to any selector you confirm in DevTools.
+
+**Adapter smoke test (runs after Python is installed):**
+
+```bash
+python -c "
+from src.adapters.maryland_mjcs import MarylandMJCSAdapter
+import asyncio
+a = MarylandMJCSAdapter(county='Baltimore County')
+cases = asyncio.run(a.search_cases(lookback_days=30))
+print(f'{len(cases)} cases found')
+if cases:
+    print('First case:', cases[0])
+"
+```
 
 ---
 
