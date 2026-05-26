@@ -68,10 +68,18 @@ async def seed_scrape_tasks(counties: list[dict[str, Any]]) -> int:
     if not rows:
         return 0
 
+    task_keys = [r["task_key"] for r in rows]
+
     def _insert() -> Any:
+        db = _db()
+        # Remove completed/failed tasks so they can be re-seeded.
+        # Pending/running tasks are left untouched — the upsert below
+        # will skip them via ignore_duplicates=True.
+        db.table("agent_tasks").delete().in_(
+            "task_key", task_keys
+        ).in_("status", ["done", "failed"]).execute()
         return (
-            _db()
-            .table("agent_tasks")
+            db.table("agent_tasks")
             .upsert(rows, on_conflict="task_key", ignore_duplicates=True)
             .execute()
         )

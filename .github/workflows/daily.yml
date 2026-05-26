@@ -8,9 +8,9 @@ on:
   workflow_dispatch:
     inputs:
       lookback_days:
-        description: 'Days to look back (default: 3)'
+        description: 'Days to look back (default: 90)'
         required: false
-        default: '3'
+        default: '90'
 
 # Shared env injected into every job via env: at job level
 env:
@@ -25,7 +25,7 @@ env:
   HUBSPOT_STAGE_NEW_LEAD:  ${{ secrets.HUBSPOT_STAGE_NEW_LEAD }}
   ANTHROPIC_API_KEY:       ${{ secrets.ANTHROPIC_API_KEY }}
   SENTRY_DSN:              ${{ secrets.SENTRY_DSN }}
-  SCRAPE_LOOKBACK_DAYS:    ${{ inputs.lookback_days || vars.SCRAPE_LOOKBACK_DAYS || '3' }}
+  SCRAPE_LOOKBACK_DAYS:    ${{ inputs.lookback_days || vars.SCRAPE_LOOKBACK_DAYS || '90' }}
   MIN_SURPLUS_AMOUNT:      ${{ vars.MIN_SURPLUS_AMOUNT || '5000' }}
   DEFAULT_FEE_PERCENTAGE:  ${{ vars.DEFAULT_FEE_PERCENTAGE || '40.0' }}
   LOG_LEVEL: INFO
