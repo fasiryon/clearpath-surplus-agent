@@ -55,7 +55,7 @@ async def seed_pipeline() -> int:
     Returns:
         Number of scrape tasks inserted into agent_tasks.
     """
-    from src import queue as q
+    from src import task_queue as q
 
     start = datetime.now(timezone.utc)
     logger.info("=" * 60)

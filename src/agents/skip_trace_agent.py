@@ -19,7 +19,7 @@ from supabase import create_client
 
 from src.agents.base_agent import BaseAgent
 from src.models import SkipTraceResult
-from src import queue as q
+from src import task_queue as q
 
 load_dotenv()
 

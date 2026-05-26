@@ -1,4 +1,4 @@
-"""Tests for src/queue.py — all Supabase calls are mocked."""
+"""Tests for src/task_queue.py — all Supabase calls are mocked."""
 
 from __future__ import annotations
 
@@ -19,10 +19,10 @@ async def test_seed_scrape_tasks_inserts_rows():
     mock_result = MagicMock()
     mock_result.data = [{"id": "uuid-1"}, {"id": "uuid-2"}]
 
-    with patch("src.queue.asyncio.to_thread", new_callable=AsyncMock) as mock_thread:
+    with patch("src.task_queue.asyncio.to_thread", new_callable=AsyncMock) as mock_thread:
         mock_thread.return_value = mock_result
 
-        from src.queue import seed_scrape_tasks
+        from src.task_queue import seed_scrape_tasks
         count = await seed_scrape_tasks(counties)
 
     assert count == 2
@@ -32,7 +32,7 @@ async def test_seed_scrape_tasks_inserts_rows():
 @pytest.mark.asyncio
 async def test_seed_scrape_tasks_empty_list_returns_zero():
     """seed_scrape_tasks with empty list should return 0 without DB call."""
-    from src.queue import seed_scrape_tasks
+    from src.task_queue import seed_scrape_tasks
     count = await seed_scrape_tasks([])
     assert count == 0
 
@@ -43,10 +43,10 @@ async def test_claim_task_returns_dict_when_task_available():
     mock_result = MagicMock()
     mock_result.data = [{"id": "task-1", "task_type": "scrape", "payload": {"county": "Baltimore County"}}]
 
-    with patch("src.queue.asyncio.to_thread", new_callable=AsyncMock) as mock_thread:
+    with patch("src.task_queue.asyncio.to_thread", new_callable=AsyncMock) as mock_thread:
         mock_thread.return_value = mock_result
 
-        from src.queue import claim_task
+        from src.task_queue import claim_task
         task = await claim_task("scrape", "worker-uuid")
 
     assert task is not None
@@ -59,10 +59,10 @@ async def test_claim_task_returns_none_when_queue_empty():
     mock_result = MagicMock()
     mock_result.data = []
 
-    with patch("src.queue.asyncio.to_thread", new_callable=AsyncMock) as mock_thread:
+    with patch("src.task_queue.asyncio.to_thread", new_callable=AsyncMock) as mock_thread:
         mock_thread.return_value = mock_result
 
-        from src.queue import claim_task
+        from src.task_queue import claim_task
         task = await claim_task("scrape", "worker-uuid")
 
     assert task is None
@@ -71,10 +71,10 @@ async def test_claim_task_returns_none_when_queue_empty():
 @pytest.mark.asyncio
 async def test_claim_task_returns_none_on_exception():
     """claim_task should return None (not raise) when Supabase errors."""
-    with patch("src.queue.asyncio.to_thread", new_callable=AsyncMock) as mock_thread:
+    with patch("src.task_queue.asyncio.to_thread", new_callable=AsyncMock) as mock_thread:
         mock_thread.side_effect = Exception("DB connection refused")
 
-        from src.queue import claim_task
+        from src.task_queue import claim_task
         task = await claim_task("scrape", "worker-uuid")
 
     assert task is None
@@ -83,10 +83,10 @@ async def test_claim_task_returns_none_on_exception():
 @pytest.mark.asyncio
 async def test_complete_task_calls_rpc():
     """complete_task should call the complete_task RPC."""
-    with patch("src.queue.asyncio.to_thread", new_callable=AsyncMock) as mock_thread:
+    with patch("src.task_queue.asyncio.to_thread", new_callable=AsyncMock) as mock_thread:
         mock_thread.return_value = MagicMock()
 
-        from src.queue import complete_task
+        from src.task_queue import complete_task
         await complete_task("task-uuid", {"cases_queued": 5})
 
     mock_thread.assert_called_once()
@@ -95,10 +95,10 @@ async def test_complete_task_calls_rpc():
 @pytest.mark.asyncio
 async def test_fail_task_calls_rpc():
     """fail_task should call the fail_task RPC with the error string."""
-    with patch("src.queue.asyncio.to_thread", new_callable=AsyncMock) as mock_thread:
+    with patch("src.task_queue.asyncio.to_thread", new_callable=AsyncMock) as mock_thread:
         mock_thread.return_value = MagicMock()
 
-        from src.queue import fail_task
+        from src.task_queue import fail_task
         await fail_task("task-uuid", "ValueError: something went wrong")
 
     mock_thread.assert_called_once()
@@ -110,10 +110,10 @@ async def test_seed_task_with_key_uses_upsert():
     mock_result = MagicMock()
     mock_result.data = [{"id": "new-task"}]
 
-    with patch("src.queue.asyncio.to_thread", new_callable=AsyncMock) as mock_thread:
+    with patch("src.task_queue.asyncio.to_thread", new_callable=AsyncMock) as mock_thread:
         mock_thread.return_value = mock_result
 
-        from src.queue import seed_task
+        from src.task_queue import seed_task
         result = await seed_task(
             task_type="docket_analysis",
             payload={"case_number": "C-24-001"},
@@ -129,10 +129,10 @@ async def test_get_pending_count_returns_zero_on_empty():
     mock_result = MagicMock()
     mock_result.count = 0
 
-    with patch("src.queue.asyncio.to_thread", new_callable=AsyncMock) as mock_thread:
+    with patch("src.task_queue.asyncio.to_thread", new_callable=AsyncMock) as mock_thread:
         mock_thread.return_value = mock_result
 
-        from src.queue import get_pending_count
+        from src.task_queue import get_pending_count
         count = await get_pending_count("scrape")
 
     assert count == 0

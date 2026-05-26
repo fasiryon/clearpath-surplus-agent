@@ -18,7 +18,7 @@ from supabase import create_client
 
 from src.adapters import CourtAdapterFactory
 from src.agents.base_agent import BaseAgent
-from src import queue as q
+from src import task_queue as q
 
 load_dotenv()
 

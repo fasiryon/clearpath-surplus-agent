@@ -20,7 +20,7 @@ from dotenv import load_dotenv
 from loguru import logger
 from supabase import create_client
 
-from src import queue as q
+from src import task_queue as q
 
 load_dotenv()
 
