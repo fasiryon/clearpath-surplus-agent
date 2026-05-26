@@ -42,7 +42,7 @@ class ScrapeAgent(BaseAgent):
         payload = task.get("payload", {})
         state = payload.get("state", "MD")
         county = payload.get("county", "")
-        lookback = int(payload.get("lookback_days", os.getenv("SCRAPE_LOOKBACK_DAYS", "3")))
+        lookback = int(payload.get("lookback_days", os.getenv("SCRAPE_LOOKBACK_DAYS", "90")))
 
         logger.info(f"ScrapeAgent: {state}/{county} (lookback={lookback}d)")
 

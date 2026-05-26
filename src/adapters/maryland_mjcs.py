@@ -60,7 +60,7 @@ class MarylandMJCSAdapter(BaseCourt):
     state = "MD"
     case_type = "CAEF"
 
-    async def search_cases(self, lookback_days: int = 3) -> list[CaseRecord]:
+    async def search_cases(self, lookback_days: int = 90) -> list[CaseRecord]:
         """
         Search MJCS for CAEF cases in self.county over the last N days.
         Returns list of CaseRecord objects (docket text NOT yet populated).
