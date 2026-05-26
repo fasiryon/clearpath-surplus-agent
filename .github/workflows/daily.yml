@@ -36,14 +36,10 @@ jobs:
   # ---------------------------------------------------------------
   seed:
     name: Seed task queue
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
-          cache: 'pip'
       - name: Install dependencies
         run: pip install -r requirements.txt
       - name: Seed scrape tasks
@@ -55,18 +51,14 @@ jobs:
   scrape:
     name: Scrape court cases
     needs: seed
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
-          cache: 'pip'
       - name: Install dependencies
-        run: |
-          pip install -r requirements.txt
-          playwright install chromium --with-deps
+        run: pip install -r requirements.txt
+      - name: Install Playwright browsers
+        run: playwright install chromium
       - name: Run scrape agent
         run: python -m src.agents.scrape_agent
       - name: Upload debug screenshots
@@ -74,7 +66,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: scraper-screenshots
-          path: /tmp/screenshots/
+          path: ${{ runner.temp }}/screenshots/
           retention-days: 1
       - name: Upload logs on failure
         if: failure()
@@ -90,14 +82,10 @@ jobs:
   docket:
     name: Analyze dockets (Claude Haiku)
     needs: scrape
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
-          cache: 'pip'
       - name: Install dependencies
         run: pip install -r requirements.txt
       - name: Run docket agent
@@ -116,14 +104,10 @@ jobs:
   skip_trace:
     name: Skip trace owners
     needs: docket
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
-          cache: 'pip'
       - name: Install dependencies
         run: pip install -r requirements.txt
       - name: Run skip trace agent
@@ -142,14 +126,10 @@ jobs:
   outreach:
     name: Trigger outreach
     needs: skip_trace
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
-          cache: 'pip'
       - name: Install dependencies
         run: pip install -r requirements.txt
       - name: Run outreach agent

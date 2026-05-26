@@ -30,23 +30,26 @@ from __future__ import annotations
 import asyncio
 import os
 import re
-from pathlib import Path
 from typing import Any
 
-_SCREENSHOT_DIR = Path("/tmp/screenshots")
+from loguru import logger
+
+
+def _screenshot_dir() -> str:
+    """Return the cross-platform screenshot directory, creating it if needed."""
+    d = os.path.join(os.environ.get("RUNNER_TEMP", "C:/tmp"), "screenshots")
+    os.makedirs(d, exist_ok=True)
+    return d
 
 
 async def _shot(page: Any, name: str) -> None:
-    """Save a full-page screenshot to /tmp/screenshots/ and log its URL."""
+    """Save a full-page screenshot to RUNNER_TEMP/screenshots/ and log its URL."""
     try:
-        _SCREENSHOT_DIR.mkdir(parents=True, exist_ok=True)
-        path = str(_SCREENSHOT_DIR / name)
+        path = os.path.join(_screenshot_dir(), name)
         await page.screenshot(path=path, full_page=True)
         logger.info(f"[screenshot] {path} — url={page.url}")
     except Exception as e:
         logger.warning(f"[screenshot] failed to save {name}: {e}")
-
-from loguru import logger
 
 from src.adapters.base_court import BaseCourt
 from src.models import CaseRecord
