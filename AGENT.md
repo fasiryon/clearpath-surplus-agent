@@ -96,6 +96,75 @@ Court files → MJCS website → scraper detects surplus keyword
 
 ---
 
+## v2 Architecture
+
+### Why the Task Queue Pattern?
+
+v1 ran all three stages sequentially in a single Python process. This meant:
+- One county failure aborted the rest
+- No way to add a county without blocking others
+- The LLM docket analysis step couldn't be inserted without refactoring everything
+
+v2 uses Supabase as a message bus. Every stage writes tasks; every agent reads tasks. Nothing shares process memory.
+
+```
+scheduler.py          → seeds agent_tasks rows (status=pending)
+scrape_agent.py       → claims 'scrape' tasks → seeds 'docket_analysis' tasks
+docket_agent.py       → claims 'docket_analysis' tasks → seeds 'skip_trace' tasks
+skip_trace_agent.py   → claims 'skip_trace' tasks → seeds 'outreach' tasks
+outreach_agent.py     → claims 'outreach' tasks → fires Zapier webhooks
+```
+
+Each agent runs as a separate GitHub Actions job. If docket_agent fails for one case, it marks that task `failed` and moves to the next — the rest of the pipeline is unaffected.
+
+### How to Add a New State (5-Step Checklist)
+
+1. **Create an adapter** in `src/adapters/your_state_county.py` inheriting `BaseCourt`
+2. **Implement `search_cases()`** — HTTP POST or API call returning `list[CaseRecord]`
+3. **Implement `get_case_detail()`** — fetches docket, sets `raw_docket_text` on the case
+4. **Register in `src/adapters/__init__.py`** — add `('STATE', 'County'): YourAdapter` to `REGISTRY`
+5. **Add to `config/states.json`** — set `active: true`
+
+No changes to agents, scheduler, or workflow needed. The adapter pattern absorbs all court-specific logic.
+
+### LLM Docket Reader — Cost Model
+
+| Model | Cost/1M input tokens | Avg docket tokens | Cost/case | 200 cases/month |
+|-------|---------------------|------------------|-----------|-----------------|
+| Claude Haiku 4.5 | ~$0.80 | ~500 | ~$0.0004 | **~$0.08** |
+
+Every Haiku call's token count is logged to `agent_runs.tokens_used`. Monitor via:
+```sql
+SELECT DATE(started_at), SUM(tokens_used), SUM(tokens_used) * 0.0008 / 1000 AS cost_usd
+FROM agent_runs WHERE agent_type = 'docket_analysis'
+GROUP BY DATE(started_at) ORDER BY 1 DESC;
+```
+
+### Sentry Integration
+
+Every `BaseAgent` subclass calls `sentry_sdk.init()` in its `__init__`. Any unhandled exception in `process()` is automatically captured and sent to Sentry before the task is marked `failed`. No extra instrumentation needed per agent.
+
+Add the DSN to GitHub Secrets as `SENTRY_DSN`. Free Sentry tier handles this volume.
+
+### How to Verify the v2 Pipeline End-to-End
+
+```bash
+# 1. Check seed worked
+SELECT task_type, status, county, COUNT(*) FROM agent_tasks
+WHERE created_at > NOW() - INTERVAL '1 hour'
+GROUP BY 1,2,3;
+
+# 2. Check docket agent costs
+SELECT SUM(tokens_used), COUNT(*) FROM agent_runs
+WHERE agent_type='docket_analysis' AND started_at > NOW() - INTERVAL '1 day';
+
+# 3. Check surplus cases found
+SELECT COUNT(*), SUM(surplus_amount) FROM surplus_cases
+WHERE created_at > NOW() - INTERVAL '1 day';
+```
+
+---
+
 ## Agent Author Suggestions
 
 *Direct feedback on architectural decisions, what I would do differently, and what would make this world-class.*
@@ -118,27 +187,11 @@ Court files → MJCS website → scraper detects surplus keyword
 
 ---
 
-### 2. Playwright vs. Requests — Requests Would Work Here
+### 2. Playwright vs. Requests — **Done in v2**
 
-The MJCS site is a classic ASP.NET Web Forms application (circa 2005–2010 era). It uses `__VIEWSTATE` and `__EVENTVALIDATION` tokens but does NOT require JavaScript rendering for most pages.
+v2 `MarylandMJCSAdapter` now uses `httpx + BeautifulSoup4` as the primary path, with Playwright headless as an automatic fallback if httpx fails or CAPTCHA is detected. This was the right call and it's now implemented. No more 300MB Chromium install for the common path.
 
-**Better approach:**
-```python
-import httpx
-from bs4 import BeautifulSoup
-
-# 1. GET the search page to extract VIEWSTATE tokens
-# 2. POST the form with viewstate + search params
-# 3. Parse HTML response with BeautifulSoup
-# 4. No browser needed
-```
-
-**Why this matters:**
-- Playwright + Chromium = ~300MB install, 2–4s startup time, higher memory use
-- httpx + BS4 = instant, lightweight, runs fine in Lambda/Railway free tier
-- MJCS has rate limits that Playwright's timing makes harder to manage precisely
-
-**However:** Keep Playwright as a fallback for captcha-gated pages. The current implementation with Playwright is correct and safe — I've kept it as-is because it handles edge cases. Refactor to httpx in Phase 2.
+The fallback is already wired — if `_search_httpx()` returns `None`, `_search_playwright()` runs automatically and the log records which path was used. Monitor the logs: if you see `playwright` used more than twice in a week, something changed on the MJCS site.
 
 ---
 
