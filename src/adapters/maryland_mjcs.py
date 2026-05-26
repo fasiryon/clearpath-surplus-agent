@@ -30,7 +30,21 @@ from __future__ import annotations
 import asyncio
 import os
 import re
+from pathlib import Path
 from typing import Any
+
+_SCREENSHOT_DIR = Path("/tmp/screenshots")
+
+
+async def _shot(page: Any, name: str) -> None:
+    """Save a full-page screenshot to /tmp/screenshots/ and log its URL."""
+    try:
+        _SCREENSHOT_DIR.mkdir(parents=True, exist_ok=True)
+        path = str(_SCREENSHOT_DIR / name)
+        await page.screenshot(path=path, full_page=True)
+        logger.info(f"[screenshot] {path} — url={page.url}")
+    except Exception as e:
+        logger.warning(f"[screenshot] failed to save {name}: {e}")
 
 from loguru import logger
 
@@ -89,6 +103,7 @@ class MarylandMJCSAdapter(BaseCourt):
 
                 await page.goto(MJCS_SEARCH_URL, wait_until="domcontentloaded", timeout=NAV_TIMEOUT_MS)
                 await asyncio.sleep(SCRAPE_DELAY)
+                await _shot(page, "01_landing.png")
 
                 if await _is_captcha_page(page):
                     logger.error("MJCS returned CAPTCHA challenge — cannot proceed headless")
@@ -96,9 +111,16 @@ class MarylandMJCSAdapter(BaseCourt):
                     return []
 
                 await _accept_disclaimer(page)
+                await _shot(page, "02_post_disclaimer.png")
+
                 await _open_advanced_search(page)
+                await _shot(page, "03_advanced_search.png")
+
                 await _fill_search_form(page, self.county, from_date, to_date)
+                await _shot(page, "04_form_filled.png")
+
                 await _submit_search(page)
+                await _shot(page, "05_results.png")
 
                 records = await _collect_all_result_pages(page, self.county)
                 await browser.close()

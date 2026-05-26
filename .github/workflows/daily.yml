@@ -69,6 +69,13 @@ jobs:
           playwright install chromium --with-deps
       - name: Run scrape agent
         run: python -m src.agents.scrape_agent
+      - name: Upload debug screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: scraper-screenshots
+          path: /tmp/screenshots/
+          retention-days: 1
       - name: Upload logs on failure
         if: failure()
         uses: actions/upload-artifact@v4
