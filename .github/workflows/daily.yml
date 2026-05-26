@@ -41,7 +41,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Install dependencies
-        run: pip install -r requirements.txt
+        run: python -m pip install -r requirements.txt
       - name: Seed scrape tasks
         run: python src/scheduler.py
 
@@ -56,9 +56,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Install dependencies
-        run: pip install -r requirements.txt
+        run: python -m pip install -r requirements.txt
       - name: Install Playwright browsers
-        run: playwright install chromium
+        run: python -m playwright install chromium
       - name: Run scrape agent
         run: python -m src.agents.scrape_agent
       - name: Upload debug screenshots
@@ -87,7 +87,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Install dependencies
-        run: pip install -r requirements.txt
+        run: python -m pip install -r requirements.txt
       - name: Run docket agent
         run: python -m src.agents.docket_agent
       - name: Upload logs on failure
@@ -109,7 +109,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Install dependencies
-        run: pip install -r requirements.txt
+        run: python -m pip install -r requirements.txt
       - name: Run skip trace agent
         run: python -m src.agents.skip_trace_agent
       - name: Upload logs on failure
@@ -131,7 +131,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Install dependencies
-        run: pip install -r requirements.txt
+        run: python -m pip install -r requirements.txt
       - name: Run outreach agent
         run: python -m src.agents.outreach_agent
       - name: Upload logs on failure
