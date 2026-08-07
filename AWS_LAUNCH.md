@@ -13,6 +13,20 @@ Last verified: 2026-08-07
 Do not place the Supabase service-role key in a variable beginning with
 `NEXT_PUBLIC_`. Do not copy LiberiaLearn production secrets into this app.
 
+## SSR runtime environment variables
+
+Amplify Hosting does not automatically pass non-`NEXT_PUBLIC_` environment
+variables to the SSR compute runtime, even though the same variables ARE
+visible during the build. `amplify.yml`'s build step writes `SUPABASE_URL`
+and `SUPABASE_SERVICE_KEY` into `.env.production` (which Next.js loads at
+runtime) so the `/api/intake` route can read them. AWS's own docs advise
+against putting secrets in environment variables because deploy artifacts
+containing `.env.production` are readable by anyone with access to the
+Amplify app's build artifacts; the recommended alternative for AWS-native
+resources is an SSR compute IAM role, but that doesn't apply to a
+third-party secret like a Supabase service key. Restrict IAM access to this
+Amplify app if that risk matters for this project.
+
 ## Verified AWS facts
 
 - A live Route 53 availability query returned `AVAILABLE` for
