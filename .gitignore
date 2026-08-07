@@ -32,3 +32,12 @@ Thumbs.db
 .vscode/
 .idea/
 *.swp
+
+# Next.js / Node
+node_modules/
+.next/
+out/
+.vercel/
+.amplify/
+*.tsbuildinfo
+npm-debug.log*
