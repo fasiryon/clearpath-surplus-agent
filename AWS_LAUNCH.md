@@ -2,6 +2,32 @@
 
 Last verified: 2026-08-07
 
+## Current deployment status (2026-08-07)
+
+- Amplify app `clearpath-surplus` (appId `d225srxpadlxy`, account
+  `466568847266`, region `us-east-1`) is live and connected to
+  `github.com/fasiryon/clearpath-surplus-agent`, branch
+  `feat/clearpath-aws-launch`, auto-build on push enabled.
+- Live temporary URL:
+  `https://feat-clearpath-aws-launch.d225srxpadlxy.amplifyapp.com`.
+  Home, privacy, terms, robots.txt, sitemap.xml, and `/api/intake` all
+  verified working.
+- Supabase project `ClearPath Surplus` (`aczxhwsjyauqqxgxoeff`,
+  us-east-1) holds `claim_inquiries` plus the existing agent tables
+  (`surplus_cases`, `surplus_contacts`, `outreach_log`, `agent_tasks`,
+  `agent_runs`). A real test inquiry was submitted through the live
+  intake endpoint, confirmed as a single row, then deleted.
+- **Domain purchase is blocked.** `aws route53domains register-domain`
+  for `clearpathsurplus.com` failed twice (2026-08-07) with a generic
+  `"We can't finish registering your domain. Contact AWS Support"`
+  error, even though the same account successfully registered
+  `liberiago.com` two days earlier with an identical request shape. No
+  charge occurs on a `FAILED` registration. Needs an AWS Support case
+  (link in the operation error) before retrying. Until resolved, the
+  site stays on the temporary `amplifyapp.com` URL.
+- Registrant on file for the eventual purchase: Farquema Siryon, 21
+  Reaching Circle, Baltimore, MD 21221.
+
 ## Architecture
 
 - AWS Amplify Hosting runs the Next.js website and server-side intake route.
